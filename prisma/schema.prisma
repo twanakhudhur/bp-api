@@ -1,0 +1,363 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Countries model
+model Country {
+  id       String     @id @default(uuid())
+  country  String     @unique @db.VarChar(30)
+  Roll     Roll[]
+  SlitRoll SlitRoll[]
+  Piece    Piece[]
+  Waste    Waste[]
+  Tambur   Tambur[]
+}
+
+// RollTypes model
+model RollType {
+  id       String     @id @default(uuid())
+  type     String     @unique @db.VarChar(10)
+  Roll     Roll[]
+  SlitRoll SlitRoll[]
+  Piece    Piece[]
+  Waste    Waste[]
+  Tambur   Tambur[]
+}
+
+// RollQualities model
+model RollQuality {
+  id       String     @id @default(uuid())
+  quality  String     @unique @db.VarChar(10)
+  Roll     Roll[]
+  SlitRoll SlitRoll[]
+  Piece    Piece[]
+  Waste    Waste[]
+  Tambur   Tambur[]
+}
+
+// Users model
+model User {
+  id         String    @id @default(uuid())
+  username   String    @unique @db.VarChar(20)
+  password   String    @db.VarChar(255)
+  phone      String    @unique @db.VarChar(15)
+  role       String    @db.VarChar(15)
+  isFrozen   Boolean   @default(false)
+  expiration DateTime?
+
+  createdAt DateTime @default(now())
+
+  rollsCreated    Roll[]      @relation("rollsCreated")
+  SlitRollCreator SlitRoll[]  @relation("SlitRollCreator")
+  slitRolls       SlitRoll[]  @relation("Slit")
+  pieces          Piece[]     @relation("Piece")
+  wastes          Waste[]     @relation("Waste")
+  soldWastes      SoldWaste[] @relation("SoldWaste")
+  tamburs         Tambur[]    @relation("Tambur")
+  Tambur          Tambur[]    @relation("PieceCreator")
+  gaveSpares      UsedSpare[] @relation("GaveSpare")
+  activities      Activity[]
+
+  @@index([createdAt])
+}
+
+// Rolls model
+model Roll {
+  id           String   @id @default(uuid())
+  rollCode     String   @unique @db.VarChar(50)
+  img          String?  @db.VarChar(30)
+  thickness    Decimal  @db.Decimal(7, 2)
+  width        Decimal  @db.Decimal(7, 2)
+  netWeight    Decimal  @db.Decimal(7, 2)
+  grossWeight  Decimal  @db.Decimal(7, 2)
+  theoryLength Decimal? @db.Decimal(7, 2)
+  actualLength Decimal? @db.Decimal(7, 2)
+
+  comment   String?  @db.VarChar(255)
+  createdAt DateTime @default(now())
+
+  type      RollType?    @relation(fields: [typeId], references: [id], onDelete: SetNull)
+  typeId    String?
+  madeIn    Country?     @relation(fields: [madeInId], references: [id], onDelete: SetNull)
+  madeInId  String?
+  quality   RollQuality? @relation(fields: [qualityId], references: [id], onDelete: SetNull)
+  qualityId String?
+  creator   User?        @relation("rollsCreated", fields: [creatorId], references: [id], onDelete: SetNull)
+  creatorId String?
+
+  @@index([createdAt])
+  @@index([creatorId])
+  @@index([typeId])
+  @@index([qualityId])
+  @@index([madeInId])
+  @@index([thickness])
+  @@index([createdAt, creatorId, typeId, qualityId, madeInId, thickness])
+}
+
+// SlitRolls model
+model SlitRoll {
+  id          String   @id @default(uuid())
+  actualWidth Decimal  @db.Decimal(7, 2)
+  daySeries   Int
+  dividedInto Int
+  createdAt   DateTime @default(now())
+
+  rollCode      String   @unique @db.VarChar(50)
+  img           String?  @unique @db.VarChar(30)
+  rollComment   String?  @db.VarChar(255)
+  rollCreatedAt DateTime
+  netWeight     Decimal  @default(0) @db.Decimal(7, 2)
+  grossWeight   Decimal  @default(0) @db.Decimal(7, 2)
+  width         Decimal  @default(0) @db.Decimal(7, 2)
+  theoryLength  Decimal? @default(0) @db.Decimal(7, 2)
+  actualLength  Decimal? @default(0) @db.Decimal(7, 2)
+  thickness     Decimal  @db.Decimal(7, 2)
+
+  type          RollType?    @relation(fields: [typeId], references: [id], onDelete: SetNull)
+  typeId        String?
+  madeIn        Country?     @relation(fields: [madeInId], references: [id], onDelete: SetNull)
+  madeInId      String?
+  quality       RollQuality? @relation(fields: [qualityId], references: [id], onDelete: SetNull)
+  qualityId     String?
+  creator       User?        @relation("Slit", fields: [creatorId], references: [id])
+  creatorId     String?
+  rollCreator   User?        @relation("SlitRollCreator", fields: [rollCreatorId], references: [id])
+  rollCreatorId String?
+
+  pieces Piece[]
+  wastes Waste[]
+  tambur Tambur[]
+
+  @@index([createdAt])
+  @@index([creatorId])
+  @@index([typeId])
+  @@index([qualityId])
+  @@index([madeInId])
+  @@index([thickness])
+  @@index([createdAt, creatorId, typeId, qualityId, madeInId, thickness])
+}
+
+// Pieces model
+model Piece {
+  id           String   @id @default(uuid())
+  autoCode     String   @unique @db.VarChar(50)
+  pieceSeries  Int?
+  weight       Decimal  @db.Decimal(7, 2)
+  width        Decimal  @db.Decimal(7, 2)
+  thickness    Decimal  @db.Decimal(7, 2)
+  comment      String?  @db.VarChar(255)
+  theoryLength Decimal? @db.Decimal(7, 2)
+  actualLength Decimal? @db.Decimal(7, 2)
+
+  createdAt DateTime @default(now())
+
+  thinned           Boolean @default(false)
+  thinningThickness Decimal @default(0) @db.Decimal(7, 2)
+  thinningLength    Decimal @default(0) @db.Decimal(7, 2)
+
+  type      RollType?    @relation(fields: [typeId], references: [id], onDelete: SetNull)
+  typeId    String?
+  madeIn    Country?     @relation(fields: [madeInId], references: [id], onDelete: SetNull)
+  madeInId  String?
+  quality   RollQuality? @relation(fields: [qualityId], references: [id], onDelete: SetNull)
+  qualityId String?
+  creator   User?        @relation("Piece", fields: [creatorId], references: [id])
+  creatorId String?
+
+  slitRoll   SlitRoll? @relation(fields: [slitRollId], references: [id], onDelete: Cascade)
+  slitRollId String?
+
+  @@index([createdAt])
+  @@index([creatorId])
+  @@index([slitRollId])
+  @@index([typeId])
+  @@index([qualityId])
+  @@index([madeInId])
+  @@index([thickness])
+  @@index([width])
+  @@index([createdAt, typeId, qualityId, madeInId, thickness, width])
+}
+
+// Wastes model
+model Waste {
+  id           String   @id @default(uuid())
+  autoCode     String   @unique @db.VarChar(50)
+  pieceSeries  Int?
+  weight       Decimal  @db.Decimal(7, 2)
+  width        Decimal  @db.Decimal(7, 2)
+  thickness    Decimal  @db.Decimal(7, 2)
+  comment      String?  @db.VarChar(255)
+  theoryLength Decimal? @db.Decimal(7, 2)
+  actualLength Decimal? @db.Decimal(7, 2)
+
+  createdAt DateTime @default(now())
+
+  type      RollType?    @relation(fields: [typeId], references: [id], onDelete: SetNull)
+  typeId    String?
+  madeIn    Country?     @relation(fields: [madeInId], references: [id], onDelete: SetNull)
+  madeInId  String?
+  quality   RollQuality? @relation(fields: [qualityId], references: [id], onDelete: SetNull)
+  qualityId String?
+  creator   User?        @relation("Waste", fields: [creatorId], references: [id])
+  creatorId String?
+
+  slitRoll   SlitRoll? @relation(fields: [slitRollId], references: [id], onDelete: Cascade)
+  slitRollId String?
+
+  soldWaste   SoldWaste? @relation(fields: [soldWasteId], references: [id])
+  soldWasteId String?
+
+  @@index([createdAt])
+  @@index([creatorId])
+  @@index([slitRollId])
+  @@index([typeId])
+  @@index([qualityId])
+  @@index([madeInId])
+  @@index([thickness])
+  @@index([width])
+  @@index([soldWasteId])
+  @@index([createdAt, thickness, width, soldWasteId])
+}
+
+// SoldWastes model
+model SoldWaste {
+  id String @id @default(uuid())
+
+  totalWeight Decimal @db.Decimal(10, 2)
+  soldTo      String  @db.VarChar(50)
+  comment     String? @db.VarChar(255)
+
+  createdAt DateTime @default(now())
+
+  creator   User?   @relation("SoldWaste", fields: [creatorId], references: [id])
+  creatorId String?
+
+  wastes Waste[]
+
+  @@index([creatorId])
+  @@index([createdAt])
+  @@index([createdAt, creatorId])
+}
+
+// Lines model
+model Line {
+  id      String   @id @default(uuid())
+  line    String   @unique @db.VarChar(10)
+  tamburs Tambur[]
+}
+
+// Tamburs model
+model Tambur {
+  id String @id @default(uuid())
+
+  actualWeight Decimal? @db.Decimal(7, 2)
+  img          String?  @unique @db.VarChar(30)
+  comment      String?  @db.VarChar(255)
+  line         Line     @relation(fields: [lineId], references: [id])
+  lineId       String
+
+  autoCode       String   @unique @db.VarChar(50)
+  pieceSeries    Int?
+  weight         Decimal  @db.Decimal(7, 2)
+  width          Decimal  @db.Decimal(7, 2)
+  thickness      Decimal  @db.Decimal(7, 2)
+  pieceComment   String?  @db.VarChar(255)
+  theoryLength   Decimal? @db.Decimal(7, 2)
+  actualLength   Decimal? @db.Decimal(7, 2)
+  pieceCreatedAt DateTime
+
+  createdAt      DateTime     @default(now())
+  type           RollType?    @relation(fields: [typeId], references: [id], onDelete: SetNull)
+  typeId         String?
+  madeIn         Country?     @relation(fields: [madeInId], references: [id], onDelete: SetNull)
+  madeInId       String?
+  quality        RollQuality? @relation(fields: [qualityId], references: [id], onDelete: SetNull)
+  qualityId      String?
+  creator        User?        @relation("Tambur", fields: [creatorId], references: [id])
+  creatorId      String?
+  pieceCreator   User?        @relation("PieceCreator", fields: [pieceCreatorId], references: [id])
+  pieceCreatorId String?
+
+  slitRoll   SlitRoll? @relation(fields: [slitRollId], references: [id], onDelete: Cascade)
+  slitRollId String?
+
+  @@index([creatorId])
+  @@index([createdAt])
+  @@index([typeId])
+  @@index([qualityId])
+  @@index([madeInId])
+  @@index([thickness])
+  @@index([lineId])
+  @@index([slitRollId])
+  @@index([createdAt, thickness, lineId, width])
+}
+
+// SpareList model
+model SpareList {
+  id          String  @id @default(uuid())
+  name        String  @unique @db.VarChar(50)
+  description String? @db.VarChar(255)
+  spares      Spare[]
+}
+
+// Spares model
+model Spare {
+  id          String      @id @default(uuid())
+  description String?     @db.VarChar(255)
+  quantity    Int
+  createdAt   DateTime    @default(now())
+  spareList   SpareList   @relation(fields: [spareListId], references: [id])
+  spareListId String      @unique
+  usedSpares  UsedSpare[]
+
+  @@index([createdAt])
+  @@index([spareListId])
+  @@index([createdAt, spareListId])
+}
+
+// UsedSpares model
+model UsedSpare {
+  id          String   @id @default(uuid())
+  quantity    Int
+  createdAt   DateTime @default(now())
+  description String?  @db.VarChar(255)
+  spare       Spare    @relation(fields: [spareId], references: [id])
+  spareId     String
+  giver       User?    @relation("GaveSpare", fields: [gaveBy], references: [id])
+  gaveBy      String?
+  usedBy      String
+
+  @@index([createdAt])
+  @@index([spareId])
+  @@index([gaveBy])
+  @@index([usedBy])
+  @@index([createdAt, spareId, gaveBy, usedBy])
+}
+
+// Activities model
+model Activity {
+  id          String  @id @default(uuid())
+  activity    String  @db.VarChar(30)
+  type        String  @db.VarChar(50)
+  description String? @db.Text
+
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String?
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
+  @@index([createdAt, userId])
+}
